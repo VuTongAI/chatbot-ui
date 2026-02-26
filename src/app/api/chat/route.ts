@@ -47,7 +47,14 @@ export async function POST(req: NextRequest) {
             ? response.content
             : JSON.stringify(response.content);
 
-        return NextResponse.json({ message: content, usage: response.usage_metadata });
+        const usage = response.usage_metadata;
+        const tokens = usage ? {
+            prompt: usage.input_tokens || 0,
+            completion: usage.output_tokens || 0,
+            total: (usage.input_tokens || 0) + (usage.output_tokens || 0),
+        } : null;
+
+        return NextResponse.json({ message: content, tokens });
     } catch (error: unknown) {
         console.error("Chat API error:", error);
         const msg = error instanceof Error ? error.message : "Unknown error";

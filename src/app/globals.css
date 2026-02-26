@@ -573,14 +573,43 @@ body {
   padding: 2px 0;
 }
 
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
 .message-timestamp {
   font-size: 11px;
   color: var(--text-dim);
-  margin-top: 4px;
 }
 
-.message-row.user .message-timestamp {
-  text-align: right;
+.message-row.user .message-meta {
+  justify-content: flex-end;
+}
+
+.message-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.stat-item svg {
+  opacity: 0.6;
 }
 
 /* Typing */

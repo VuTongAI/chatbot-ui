@@ -52,11 +52,13 @@ export default function ChatPage() {
             addMessage(sessionId, userMsg);
 
             try {
-                const session = state.sessions.find((s) => s.id === sessionId);
-                const history = session
-                    ? session.messages.map((m) => ({ role: m.role, content: m.content }))
+                const currentSession = state.sessions.find((s) => s.id === sessionId);
+                const history = currentSession
+                    ? currentSession.messages.map((m) => ({ role: m.role, content: m.content }))
                     : [];
                 history.push({ role: "user", content: trimmed });
+
+                const startTime = Date.now();
 
                 const res = await fetch("/api/chat", {
                     method: "POST",
@@ -64,6 +66,7 @@ export default function ChatPage() {
                     body: JSON.stringify({ messages: history }),
                 });
 
+                const responseTime = Date.now() - startTime;
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || "Request failed");
 
@@ -72,6 +75,8 @@ export default function ChatPage() {
                     role: "assistant",
                     content: data.message,
                     timestamp: Date.now(),
+                    responseTime,
+                    tokens: data.tokens || undefined,
                 });
             } catch (err) {
                 addMessage(sessionId, {

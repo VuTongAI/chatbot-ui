@@ -5,6 +5,12 @@ export interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: number;
+    responseTime?: number; // ms
+    tokens?: {
+        prompt: number;
+        completion: number;
+        total: number;
+    };
 }
 
 export interface ChatSession {
