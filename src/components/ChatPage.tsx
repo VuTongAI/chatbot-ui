@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { useChatContext } from "@/context/ChatContext";
 import { Message } from "@/types/chat";
 import Sidebar from "@/components/Sidebar";
@@ -8,6 +9,7 @@ import ChatMessage from "@/components/ChatMessage";
 import WelcomeScreen from "@/components/WelcomeScreen";
 
 export default function ChatPage() {
+    const { data: session } = useSession();
     const { state, createSession, addMessage, getActiveSession } = useChatContext();
 
     const [input, setInput] = useState("");
@@ -145,6 +147,31 @@ export default function ChatPage() {
                             <div className="status-dot" />
                             <span>Online</span>
                         </div>
+                        {session?.user && (
+                            <div className="user-profile">
+                                {session.user.image && (
+                                    <img
+                                        src={session.user.image}
+                                        alt=""
+                                        className="user-avatar"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                )}
+                                <span className="user-name">{session.user.name?.split(" ")[0]}</span>
+                                <button
+                                    className="signout-btn"
+                                    onClick={() => signOut()}
+                                    title="Sign out"
+                                    aria-label="Sign out"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                        <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                                        <polyline points="16 17 21 12 16 7" />
+                                        <line x1="21" y1="12" x2="9" y2="12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </header>
 
