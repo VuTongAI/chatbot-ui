@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useChatContext } from "@/context/ChatContext";
+import AILogo from "@/components/AILogo";
 
 function timeAgo(ts: number): string {
     const diff = Date.now() - ts;
@@ -25,14 +26,10 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
     return (
         <aside className={`sidebar ${isOpen ? "" : "collapsed"}`}>
-            {/* Brand */}
             <div className="sidebar-header">
                 <div className="sidebar-brand">
                     <div className="sidebar-brand-icon">
-                        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="50" cy="50" r="38" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                            <text x="50" y="58" textAnchor="middle" fill="currentColor" fontSize="32" fontWeight="600" fontFamily="Inter, sans-serif">AI</text>
-                        </svg>
+                        <AILogo size={18} />
                     </div>
                     <span className="sidebar-brand-name">Assistant</span>
                 </div>
@@ -43,12 +40,10 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 </button>
             </div>
 
-            {/* New Chat */}
             <button className="new-chat-btn" onClick={createSession} id="new-chat-btn">
                 New conversation
             </button>
 
-            {/* Sessions */}
             <div className="session-list" id="session-list">
                 {state.sessions.length === 0 ? (
                     <div className="empty-state">

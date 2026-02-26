@@ -3,6 +3,7 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import { Message } from "@/types/chat";
+import AILogo from "@/components/AILogo";
 
 interface ChatMessageProps {
     message: Message;
@@ -19,10 +20,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         <div className={`message-row ${message.role}`}>
             {!isUser && (
                 <div className="message-avatar assistant">
-                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="50" cy="50" r="38" stroke="currentColor" strokeWidth="4" opacity="0.3" />
-                        <text x="50" y="58" textAnchor="middle" fill="currentColor" fontSize="32" fontWeight="600" fontFamily="Inter, sans-serif">AI</text>
-                    </svg>
+                    <AILogo size={16} />
                 </div>
             )}
             <div className="message-content">

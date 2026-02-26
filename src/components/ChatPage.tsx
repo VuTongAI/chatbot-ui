@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { useChatContext } from "@/context/ChatContext";
 import { Message } from "@/types/chat";
 import Sidebar from "@/components/Sidebar";
 import ChatMessage from "@/components/ChatMessage";
 import WelcomeScreen from "@/components/WelcomeScreen";
+import AILogo from "@/components/AILogo";
 
 export default function ChatPage() {
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
     const { state, createSession, addMessage, getActiveSession } = useChatContext();
 
     const [input, setInput] = useState("");
@@ -93,9 +94,18 @@ export default function ChatPage() {
         }
     }, [pendingMessage, state.activeSessionId, sendMessage]);
 
+    const requireAuth = (): boolean => {
+        if (status !== "authenticated") {
+            signIn("google");
+            return false;
+        }
+        return true;
+    };
+
     const handleSend = () => {
         const trimmed = input.trim();
         if (!trimmed || isLoading) return;
+        if (!requireAuth()) return;
         if (!state.activeSessionId) {
             setPendingMessage(trimmed);
             setInput("");
@@ -106,6 +116,7 @@ export default function ChatPage() {
     };
 
     const handleSuggestion = (text: string) => {
+        if (!requireAuth()) return;
         if (!state.activeSessionId) {
             setPendingMessage(text);
             createSession();
@@ -186,10 +197,7 @@ export default function ChatPage() {
                         {isLoading && (
                             <div className="typing-row">
                                 <div className="message-avatar assistant">
-                                    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 16, height: 16 }}>
-                                        <circle cx="50" cy="50" r="38" stroke="currentColor" strokeWidth="4" opacity="0.3" />
-                                        <text x="50" y="58" textAnchor="middle" fill="currentColor" fontSize="32" fontWeight="600">AI</text>
-                                    </svg>
+                                    <AILogo size={16} />
                                 </div>
                                 <div className="typing-bubble">
                                     <div className="typing-dot" />
