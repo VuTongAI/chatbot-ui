@@ -15,6 +15,7 @@ export default function ChatPage() {
 
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [streamingMessage, setStreamingMessage] = useState<string>("");
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [pendingMessage, setPendingMessage] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -66,19 +67,70 @@ export default function ChatPage() {
                     body: JSON.stringify({ messages: history }),
                 });
 
+                if (!res.ok) {
+                    const errorObj = await res.json().catch(() => ({}));
+                    throw new Error(errorObj.error || "Request failed");
+                }
+
+                if (!res.body) throw new Error("No response body");
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let done = false;
+
+                let assistantResponse = "";
+                let totalTokens = 0;
+
+                while (!done) {
+                    const { value, done: readerDone } = await reader.read();
+                    done = readerDone;
+
+                    if (value) {
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split("\n");
+
+                        for (const line of lines) {
+                            if (line.startsWith("data: ")) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+
+                                    if (data.error) throw new Error(data.error);
+
+                                    if (data.text) {
+                                        assistantResponse += data.text;
+                                        setStreamingMessage(assistantResponse);
+                                    }
+
+                                    if (data.tokens) {
+                                        totalTokens = data.tokens;
+                                    }
+                                } catch (e) {
+                                    // Bỏ qua lỗi parse JSON nhỏ
+                                }
+                            }
+                        }
+                    }
+                }
+
                 const responseTime = Date.now() - startTime;
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Request failed");
+
+                // Clear streaming state và lưu tin nhắn cuối cùng vào context
+                setStreamingMessage("");
 
                 addMessage(sessionId, {
                     id: crypto.randomUUID?.() || (Date.now() + 1).toString(),
                     role: "assistant",
-                    content: data.message,
+                    content: assistantResponse,
                     timestamp: Date.now(),
                     responseTime,
-                    tokens: data.tokens || undefined,
+                    tokens: totalTokens > 0 ? {
+                        prompt: 0,
+                        completion: totalTokens,
+                        total: totalTokens
+                    } : undefined,
                 });
             } catch (err) {
+                setStreamingMessage("");
                 addMessage(sessionId, {
                     id: crypto.randomUUID?.() || (Date.now() + 1).toString(),
                     role: "assistant",
@@ -199,7 +251,20 @@ export default function ChatPage() {
                         {activeSession.messages.map((msg) => (
                             <ChatMessage key={msg.id} message={msg} />
                         ))}
-                        {isLoading && (
+
+                        {/* Hiển thị tin nhắn đang stream realtime */}
+                        {streamingMessage && (
+                            <ChatMessage
+                                message={{
+                                    id: "streaming",
+                                    role: "assistant",
+                                    content: streamingMessage,
+                                    timestamp: Date.now(),
+                                }}
+                            />
+                        )}
+
+                        {isLoading && !streamingMessage && (
                             <div className="typing-row">
                                 <div className="message-avatar assistant">
                                     <AILogo size={16} />

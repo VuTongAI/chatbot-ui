@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { ChatOpenAI } from "@langchain/openai";
 import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 
@@ -10,6 +10,8 @@ const chatModel = new ChatOpenAI({
     modelName: "gpt-5-chat-latest",
     temperature: 0.7,
     maxTokens: 2048,
+    maxRetries: 1,
+    streaming: true,
 });
 
 const SYSTEM_PROMPT = `Bạn là một trợ lý AI thông minh, thân thiện và hữu ích. Bạn có thể trả lời bằng tiếng Việt hoặc bất kỳ ngôn ngữ nào mà người dùng sử dụng.
@@ -32,7 +34,10 @@ export async function POST(req: NextRequest) {
         const { messages } = body as { messages: MessageInput[] };
 
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
-            return NextResponse.json({ error: "Messages array is required" }, { status: 400 });
+            return new Response(JSON.stringify({ error: "Messages array is required" }), {
+                status: 400,
+                headers: { "Content-Type": "application/json" },
+            });
         }
 
         const langchainMessages = [
@@ -42,29 +47,54 @@ export async function POST(req: NextRequest) {
             ),
         ];
 
-        const response = await chatModel.invoke(langchainMessages);
-        const content = typeof response.content === 'string'
-            ? response.content
-            : JSON.stringify(response.content);
+        // Stream response
+        const stream = await chatModel.stream(langchainMessages);
 
-        const usage = response.usage_metadata;
-        const tokens = usage ? {
-            prompt: usage.input_tokens || 0,
-            completion: usage.output_tokens || 0,
-            total: (usage.input_tokens || 0) + (usage.output_tokens || 0),
-        } : null;
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+            async start(controller) {
+                let tokenCount = 0;
+                try {
+                    for await (const chunk of stream) {
+                        const text = typeof chunk.content === "string" ? chunk.content : "";
+                        if (text) {
+                            tokenCount++;
+                            controller.enqueue(
+                                encoder.encode(`data: ${JSON.stringify({ text, tokens: tokenCount })}\n\n`)
+                            );
+                        }
+                    }
+                    // Send done signal with final token count
+                    controller.enqueue(
+                        encoder.encode(`data: ${JSON.stringify({ done: true, tokens: tokenCount })}\n\n`)
+                    );
+                } catch (err) {
+                    controller.enqueue(
+                        encoder.encode(`data: ${JSON.stringify({ error: err instanceof Error ? err.message : "Stream error" })}\n\n`)
+                    );
+                } finally {
+                    controller.close();
+                }
+            },
+        });
 
-        return NextResponse.json({ message: content, tokens });
+        return new Response(readable, {
+            headers: {
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                Connection: "keep-alive",
+            },
+        });
     } catch (error: unknown) {
         console.error("Chat API error:", error);
         const msg = error instanceof Error ? error.message : "Unknown error";
 
         if (msg.includes("401") || msg.includes("API key")) {
-            return NextResponse.json({ error: "API key không hợp lệ." }, { status: 401 });
+            return new Response(JSON.stringify({ error: "API key không hợp lệ." }), { status: 401 });
         }
         if (msg.includes("429")) {
-            return NextResponse.json({ error: "Rate limit. Vui lòng thử lại sau." }, { status: 429 });
+            return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429 });
         }
-        return NextResponse.json({ error: "Đã xảy ra lỗi. Vui lòng thử lại." }, { status: 500 });
+        return new Response(JSON.stringify({ error: "Đã xảy ra lỗi." }), { status: 500 });
     }
 }
